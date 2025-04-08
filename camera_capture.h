@@ -1,9 +1,22 @@
+#if defined(__aarch64__) || defined(__linux__)
 #ifndef CAMERACAPTURE_H
 #define CAMERACAPTURE_H
 
 #include <QObject>
 #include <QImage>
 #include <QTimer>
+#include <QImage>
+
+class MJpegDecoder : public QObject
+{
+    Q_OBJECT
+public:
+    explicit MJpegDecoder(QObject *parent = nullptr);
+    QImage decode(const QByteArray &mjpegData);
+
+signals:
+    void errorOccurred(const QString &error);
+};
 
 class CameraCapture : public QObject
 {
@@ -18,6 +31,7 @@ public:
     bool isRunning() const;
 
 signals:
+    void errorOccurred(const QString &error);
     void newFrame(const QImage &frame);
     void error(const QString &message);
 
@@ -28,7 +42,6 @@ private:
     bool initDevice();
     bool initMMap();
     void uninitDevice();
-    QImage convertYUYVToRGB(const unsigned char *data, int width, int height);
 
     QString deviceName;
     int fd;
@@ -39,5 +52,7 @@ private:
     unsigned int nBuffers;
     QTimer *captureTimer;
     bool running;
+    MJpegDecoder *decoder;
 };
 #endif // CAMERACAPTURE_H
+#endif

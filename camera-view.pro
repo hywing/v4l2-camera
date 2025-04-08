@@ -16,6 +16,10 @@ HEADERS += \
         camera_capture.h \
         main_window.h
 
+unix:!macx {
+    LIBS += -ljpeg
+}
+
 local.path = $$OUT_PWD
 local.path ~= s/builds.*/
 target.path = /root

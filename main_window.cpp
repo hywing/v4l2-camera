@@ -11,6 +11,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), cameraCapture(nullptr)
 {
+    setFixedSize(1920, 1080);
     setupUI();
     enumerateDevices();
 }
@@ -30,7 +31,7 @@ void MainWindow::setupUI()
 
     imageLabel = new QLabel(this);
     imageLabel->setAlignment(Qt::AlignCenter);
-    imageLabel->setMinimumSize(640, 480);
+    imageLabel->setFixedSize(1280, 720);
 
     QHBoxLayout *controlLayout = new QHBoxLayout();
     deviceCombo = new QComboBox(this);

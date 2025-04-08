@@ -1,3 +1,4 @@
+#if defined(__aarch64__) || defined(__linux__)
 #include "camera_capture.h"
 #include <fcntl.h>
 #include <unistd.h>
@@ -6,10 +7,54 @@
 #include <linux/videodev2.h>
 #include <QDebug>
 
+#include <jpeglib.h>
+#include <QDebug>
+
+MJpegDecoder::MJpegDecoder(QObject *parent) : QObject(parent) {}
+
+QImage MJpegDecoder::decode(const QByteArray &mjpegData) {
+    struct jpeg_decompress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+
+    cinfo.err = jpeg_std_error(&jerr);
+    jpeg_create_decompress(&cinfo);
+
+    jpeg_mem_src(&cinfo, reinterpret_cast<const unsigned char*>(mjpegData.constData()), mjpegData.size());
+
+    if (jpeg_read_header(&cinfo, TRUE) != JPEG_HEADER_OK) {
+        emit errorOccurred("JPEG头解析失败");
+        jpeg_destroy_decompress(&cinfo);
+        return QImage();
+    }
+
+    if (jpeg_start_decompress(&cinfo) != TRUE) {
+        emit errorOccurred("JPEG解码启动失败");
+        jpeg_destroy_decompress(&cinfo);
+        return QImage();
+    }
+
+    QImage image(cinfo.output_width, cinfo.output_height, QImage::Format_RGB888);
+
+    JSAMPARRAY buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, cinfo.output_width * cinfo.output_components, 1);
+
+    while (cinfo.output_scanline < cinfo.output_height) {
+        jpeg_read_scanlines(&cinfo, buffer, 1);
+        uchar *dest = image.scanLine(cinfo.output_scanline - 1);
+        memcpy(dest, buffer[0], cinfo.output_width * cinfo.output_components);
+    }
+
+    jpeg_finish_decompress(&cinfo);
+    jpeg_destroy_decompress(&cinfo);
+
+    return image;
+}
+
 CameraCapture::CameraCapture(const QString &device, QObject *parent)
     : QObject(parent), deviceName(device), fd(-1), buffers(nullptr), nBuffers(0), running(false)
 {
     captureTimer = new QTimer(this);
+    // 初始化解码器
+    decoder = new MJpegDecoder(this);
     connect(captureTimer, &QTimer::timeout, this, &CameraCapture::captureFrame);
 }
 
@@ -95,9 +140,9 @@ bool CameraCapture::initDevice()
     // Set format
     struct v4l2_format fmt = {};
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    fmt.fmt.pix.width = 640;
-    fmt.fmt.pix.height = 480;
-    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+    fmt.fmt.pix.width = 1280;
+    fmt.fmt.pix.height = 720;
+    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
     fmt.fmt.pix.field = V4L2_FIELD_NONE;
 
     if (ioctl(fd, VIDIOC_S_FMT, &fmt) == -1) {
@@ -180,60 +225,42 @@ void CameraCapture::uninitDevice()
 
 void CameraCapture::captureFrame()
 {
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
+
+    struct timeval tv = {};
+    tv.tv_sec = 2;
+    tv.tv_usec = 0;
+
+    int r = select(fd + 1, &fds, nullptr, nullptr, &tv);
+    if (r == -1) {
+        emit errorOccurred("select错误");
+    } else if (r == 0) {
+        emit errorOccurred("采集超时");
+    }
+
     struct v4l2_buffer buf = {};
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     buf.memory = V4L2_MEMORY_MMAP;
 
     if (ioctl(fd, VIDIOC_DQBUF, &buf) == -1) {
-        emit error("Failed to dequeue buffer");
-        return;
+        emit errorOccurred("获取帧失败");
     }
 
-    // Process the frame
-    QImage image = convertYUYVToRGB(static_cast<unsigned char*>(buffers[buf.index].start),
-           640, 480);
-    emit newFrame(image);
+    QByteArray frameData(static_cast<char*>(buffers[buf.index].start), buf.bytesused);
 
-    // Requeue the buffer
+    // 重新将缓冲区放入队列
     if (ioctl(fd, VIDIOC_QBUF, &buf) == -1) {
-        emit error("Failed to requeue buffer");
+        emit errorOccurred("缓冲区重新入队失败");
     }
-}
 
-QImage CameraCapture::convertYUYVToRGB(const unsigned char *data, int width, int height)
-{
-    QImage image(width, height, QImage::Format_RGB888);
-
-    for (int y = 0; y < height; ++y) {
-        const unsigned char *src = data + y * width * 2;
-        unsigned char *dst = image.scanLine(y);
-
-        for (int x = 0; x < width; x += 2) {
-            // YUYV to RGB conversion
-            int y0 = src[0];
-            int u = src[1];
-            int y1 = src[2];
-            int v = src[3];
-
-            // First pixel (Y0 U V)
-            int c = y0 - 16;
-            int d = u - 128;
-            int e = v - 128;
-
-            dst[0] = qBound(0, (298 * c + 409 * e + 128) >> 8, 255); // R
-            dst[1] = qBound(0, (298 * c - 100 * d - 208 * e + 128) >> 8, 255); // G
-            dst[2] = qBound(0, (298 * c + 516 * d + 128) >> 8, 255); // B
-
-            // Second pixel (Y1 U V)
-            c = y1 - 16;
-            dst[3] = qBound(0, (298 * c + 409 * e + 128) >> 8, 255); // R
-            dst[4] = qBound(0, (298 * c - 100 * d - 208 * e + 128) >> 8, 255); // G
-            dst[5] = qBound(0, (298 * c + 516 * d + 128) >> 8, 255); // B
-
-            src += 4;
-            dst += 6;
+    if (!frameData.isEmpty()) {
+        QImage image = decoder->decode(frameData);
+        if (!image.isNull()) {
+            emit newFrame(image);
         }
     }
-
-    return image;
 }
+
+#endif
