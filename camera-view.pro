@@ -1,4 +1,4 @@
-QT       += core gui
+QT       += core gui multimediawidgets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -16,11 +16,9 @@ HEADERS += \
         camera_capture.h \
         main_window.h
 
-unix:!macx {
-    LIBS += -ljpeg
-}
+LIBS += -lv4l2
 
 local.path = $$OUT_PWD
 local.path ~= s/builds.*/
-target.path = /root
+target.path = /userdata/admin
 INSTALLS += target

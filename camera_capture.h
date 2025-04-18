@@ -1,58 +1,38 @@
-#if defined(__aarch64__) || defined(__linux__)
-#ifndef CAMERACAPTURE_H
-#define CAMERACAPTURE_H
+//#ifndef CAMERACAPTURE_H
+//#define CAMERACAPTURE_H
 
-#include <QObject>
-#include <QImage>
-#include <QTimer>
-#include <QImage>
+//#include <QObject>
+//#include <QImage>
+//#include <QTimer>
 
-class MJpegDecoder : public QObject
-{
-    Q_OBJECT
-public:
-    explicit MJpegDecoder(QObject *parent = nullptr);
-    QImage decode(const QByteArray &mjpegData);
+//class CameraCapture : public QObject
+//{
+//    Q_OBJECT
 
-signals:
-    void errorOccurred(const QString &error);
-};
+//public:
+//    explicit CameraCapture(QObject *parent = nullptr);
 
-class CameraCapture : public QObject
-{
-    Q_OBJECT
+//    ~CameraCapture();
 
-public:
-    explicit CameraCapture(const QString &device, QObject *parent = nullptr);
-    ~CameraCapture();
+//    bool start();
+//    void stop();
 
-    bool start();
-    void stop();
-    bool isRunning() const;
+//signals:
+//    void newFrame(const QImage &frame);
+//    void error(const QString &message);
 
-signals:
-    void errorOccurred(const QString &error);
-    void newFrame(const QImage &frame);
-    void error(const QString &message);
+//private slots:
+//    void captureFrame();
 
-private slots:
-    void captureFrame();
+//private:
+//    bool initDevice();
+//    bool initMMap();
+//    void uninitDevice();
+//    QImage NV12ToRGB(const quint8* nv12, int width, int height);
 
-private:
-    bool initDevice();
-    bool initMMap();
-    void uninitDevice();
-
-    QString deviceName;
-    int fd;
-    struct buffer {
-        void *start;
-        size_t length;
-    } *buffers;
-    unsigned int nBuffers;
-    QTimer *captureTimer;
-    bool running;
-    MJpegDecoder *decoder;
-};
-#endif // CAMERACAPTURE_H
-#endif
+//    int fd;
+//    quint8* buffers[4];  // 映射的缓冲区
+//    QSize frameSize;
+//    QTimer *captureTimer;
+//};
+//#endif // CAMERACAPTURE_H
