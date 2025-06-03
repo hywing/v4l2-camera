@@ -1,2 +1,2 @@
 # v4l2-camera
-Get camera video data in v4l2 way
+Obtaining camera data through the v4l2 method, supporting raw data formats such as MJPEG and NV12, and enabling video display via QML.
