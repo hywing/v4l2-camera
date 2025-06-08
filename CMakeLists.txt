@@ -17,20 +17,20 @@ include_directories(${CMAKE_SOURCE_DIR})
 
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
-file(GLOB_RECURSE SRC
+file(GLOB SRC
     "${SRC_DIR}/*.cpp"
     "${SRC_DIR}/*.cxx"
     "${SRC_DIR}/*.cc"
     "${SRC_DIR}/*.c"
 )
 
-file(GLOB_RECURSE HEADERS
+file(GLOB HEADERS
     "${SRC_DIR}/*.h"
     "${SRC_DIR}/*.hpp"
     "${SRC_DIR}/*.hxx"
 )
 
-file(GLOB_RECURSE RES
+file(GLOB RES
     "${SRC_DIR}/*.ui"
     "${SRC_DIR}/*.qrc"
 )
