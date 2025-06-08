@@ -12,9 +12,6 @@
 #include <QMessageBox>
 #include <QStackedLayout>
 
-#include "image_converter.h"
-#include "v4l2_camera.h"
-
 
 // 摄像头显示视图
 class CameraView : public QLabel

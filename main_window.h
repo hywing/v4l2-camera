@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QImage>
 #include "camera_view.h"
+#include "v4l2_camera.h"
 
 class QGridLayout;
 
