@@ -1,40 +1,35 @@
-//#ifndef MAINWINDOW_H
-//#define MAINWINDOW_H
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
 
-//#include <QMainWindow>
-//#include <QImage>
+#include <QMainWindow>
+#include <QImage>
+#include "camera_view.h"
 
-////QT_BEGIN_NAMESPACE
-//class QLabel;
-//class QPushButton;
-//class QComboBox;
-////QT_END_NAMESPACE
+class QGridLayout;
 
-//class CameraCapture;
+class MainWindow : public QWidget
+{
+    Q_OBJECT
+public:
+    MainWindow(QWidget *parent = nullptr);
 
-//class MainWindow : public QMainWindow
-//{
-////    Q_OBJECT
+    ~MainWindow();
 
-//public:
-//    MainWindow(QWidget *parent = nullptr);
-//    ~MainWindow();
+private slots:
+    void updateFrames();
 
-////private slots:
-//    void startCapture();
-//    void stopCapture();
-//    void updateFrame(const QImage &frame);
-//    void deviceChanged(int index);
+    void toggleFullscreen(int index);
 
-//private:
-//    void enumerateDevices();
-//    void setupUI();
+private:
+    bool safeResolutionChange(int index, int width, int height);
 
-//    CameraCapture *cameraCapture;
-//    QLabel *imageLabel;
-//    QPushButton *startButton;
-//    QPushButton *stopButton;
-//    QComboBox *deviceCombo;
-//    QList<QString> videoDevices;
-//};
-//#endif // MAINWINDOW_H
+private:
+    QGridLayout *mainLayout;
+    CameraView *views[4];
+    V4L2Camera cameras[4];
+    QTimer *frameTimer;
+    int fullscreenIndex;
+    const QString cameraDevices[4] = {"/dev/video11", "/dev/video12", "/dev/video13", "/dev/video14"};
+
+};
+#endif // MAINWINDOW_H
